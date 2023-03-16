@@ -45,3 +45,5 @@ urllib3==1.26.3
 Werkzeug==1.0.1
 wrapt==1.12.1
 zipp==3.4.1
+mysql-connector-python==8.0.17
+boto3

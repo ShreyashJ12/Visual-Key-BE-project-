@@ -1,33 +1,27 @@
-
-# AES 256 encryption/decryption using pycryptodome library
-
 from base64 import b64encode, b64decode
 import hashlib
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
+import kmskey
 
 
-def encrypt(plain_text, password):
+def encrypt(plain_text, secrt):
     # generate a random salt
-    # salt = get_random_bytes(AES.block_size)
-    salt = b64decode('lQL+Et73kRcwG7njMjNQOQ==')
-    nonce = b64decode('mqOp8IOrb8gkxn/WhLj9HA==')
-    tag = b64decode('Befay3pQd6LBT24G6vmC5A==')
-
-    # use the Scrypt KDF to get a private key from the password
+    salt = get_random_bytes(AES.block_size)
+    print(type(salt))
+    #p_key = b'\x83\xe2%\tB\x99\xc0d\x13\x05\x1f>\xaaB\x05\x8e\r\x94T\xe4M\x00)c\x1f\xab+\xb3\xd4\xf3E\xcc.'
+    encrContxt = { 'context': secrt[2:5] }
+    p_key = kmskey.getEncryptkey(encrContxt)
     private_key = hashlib.scrypt(
-        password.encode(), salt=salt, n=2 ** 14, r=8, p=1, dklen=32)
-
-    # create cipher config
-    cipher_config = AES.new(private_key, AES.MODE_GCM, nonce= nonce)
-
-    # return a dictionary with the encrypted text
+         p_key[1], salt=salt, n=2 ** 14, r=8, p=1, dklen=32)
+    cipher_config = AES.new(private_key, AES.MODE_GCM) #nonce= nonce
     cipher_text, tag = cipher_config.encrypt_and_digest(bytes(plain_text, 'utf-8'))
     return {
         'cipher_text': b64encode(cipher_text).decode('utf-8'),
         'salt': b64encode(salt).decode('utf-8'),
         'nonce': b64encode(cipher_config.nonce).decode('utf-8'),
-        'tag': b64encode(tag).decode('utf-8')
+        'tag': b64encode(tag).decode('utf-8'),
+        'key': b64encode(p_key[0]).decode('utf-8')
     }
 
 
@@ -50,6 +44,3 @@ def decrypt(enc_dict, password):
 
     return decrypted
 
-
-hashed_string= 'ff94b76307958c3451f53b44847c299084d5391ff84b8d0dd745ee06f0c4ca61'
-print(encrypt(hashed_string, "shreyash"))
