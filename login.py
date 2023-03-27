@@ -1,98 +1,116 @@
-import os
-import random
-import tkinter as tk
-import tkinter.messagebox
-from tkinter import *
-from feature_extraction import *
-from PIL import Image, ImageTk
-import hashlib
-import aes256encrypt as aes256
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage, Toplevel, messagebox
+from PIL import ImageTk,Image
+from pathlib import Path
+from vkdatabaseconnect import checkUser
 
-root = tk.Tk()
-root.geometry("1920x1080")  # Size of the window
-root.title('Login')
-USERNAME = StringVar()
-buttons = []
+from Register import register_window
+from SelectImages import selectimg_window
 
-def user_login():
-    if USERNAME.get() == "shreyash":
-        root.withdraw()
-        usl = Toplevel()
-        usl.title("Enter password")
-        usl.geometry('1920x1080+0+0')
-        col = 1  # start from column 1
-        row = 5  # start from row 3
-        name = []
-        num = 3
-        Title = Frame(usl, bg='powder blue')
-        Title.pack()
+OUTPUT_PATH = Path(__file__).parent
+ASSETS_PATH = OUTPUT_PATH / Path("./assets")
 
-        PassFrame = LabelFrame(usl, bd=10, width=560, height=500, padx=20, relief=RIDGE, )
-        PassFrame.pack()
+def relative_to_assets(path: str) -> Path:
+    return ASSETS_PATH / Path(path)
 
-        lbl_title = Label(Title, text="Select the correct images", font=('arial', 11, 'bold')).grid(row=0, column=0)
+class login_window(Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Login")
+        self.geometry("1417x878")
+        self.configure(bg = "#0C464A")
 
-        def show_img(path, imgnm):
-            name.append(os.path.join(path,imgnm))
-            print(name)
-            if len(name) == num:
-                for i in range(len(buttons)):
-                    buttons[i].config(state="disabled")
-                generate_desci(name)
+        self.canvas = Canvas(
+            self,
+            bg = "#0C464A",
+            height = 878,
+            width = 1417,
+            bd = 0,
+            highlightthickness = 0,
+            relief = "ridge"
+        )
 
-        def generate_desci(filename):
-            for f in filename:
-                # load and prepare the photograph
-                photo = extract_features(f)
-                # generate description
-                max_length = 33
-                description = generate_desc(model, tokenizer, photo, max_length)
-                description = clean_description(description)
-            hashed_string = hashlib.sha256(description.encode('utf-8')).hexdigest()
-            print("hashed sentence:", hashed_string)
-            test = "1GJIV1YICKxwLTLaoFsy0Gr4jOJ62fpXGwCRrbKNZSDJsSNgDRT2fEAiArz1NU1opSeeA1N1QofrCeuJon5c8w=="
-            print(aes256.encrypt(hashed_string, "shreyash")['cipher_text'])
-            if aes256.encrypt(hashed_string, "shreyash")['cipher_text'] == test:
-                tkinter.messagebox.showinfo("Success", "Logged in successfully")
-            else:
-                tkinter.messagebox.showerror("Error", "The entered credentials are incorrect")
-                usl.destroy()
-                root.deiconify()
+        self.canvas.place(x = 0, y = 0)
 
-        folderpath = r"./test images"
-        filename = os.listdir(folderpath)
-        random.shuffle(filename)
-        for f in filename:
-            img = Image.open(os.path.join(folderpath,f))  # read the image file
-            img = img.resize((100, 100))  # new width & height
-            img = ImageTk.PhotoImage(img)
-            btn = tk.Button(PassFrame, text=filename.index(f), command=lambda imgf=f:show_img(folderpath, imgf))
-            btn.image = img
-            btn['image'] = img
-            btn.grid(row=row, column=col)
-            buttons.append(btn)
-            if col == 5:  # start new line after third column
-                row = row + 1  # start with next row
-                col = 1  # start with first column
-            else:  # within the same row
-                col = col + 1  # increase to next column
+        self.img = Image.open(relative_to_assets("bg-img1.png"))
+        self.background_image = ImageTk.PhotoImage(self.img) 
+        self.canvas.create_image(0, 0, anchor='nw', image= self.background_image) 
 
 
+        self.canvas.create_text(
+            288.0,
+            213.0,
+            anchor="nw",
+            text="Login",
+            fill="#FFFFFF",
+            font=("Kalam", 64 * -1)
+        )
 
-frame = Frame(root, bg='powder blue')
-frame.pack()
+        self.RegisterImg = ImageTk.PhotoImage(Image.open(relative_to_assets("login_register.png")))
+        Registerbutton = self.canvas.create_image(435.0, 652.0, image=self.RegisterImg)
+        self.canvas.tag_bind(Registerbutton, "<Button-1>", self.open_register_window)
 
-Title = Frame(root, bg='powder blue')
-Title.pack()
 
-Details = Frame(root, bg='powder blue')
-Details.pack()
+        self.canvas.create_text(
+            250.0,
+            632.0,
+            anchor="nw",
+            text="New User?",
+            fill="#FFFFFF",
+            font=("Kalam", 18, "bold")
+        )
 
-lbl_title = Label(Title, text="Login", font=('arial', 14, 'bold')).grid(row=0, column=0)
+        self.LoginImg = ImageTk.PhotoImage(Image.open(relative_to_assets("login.png")))
+        Loginbutton = self.canvas.create_image(360, 548, image=self.LoginImg)
+        self.canvas.tag_bind(Loginbutton, "<Button-1>", self.checkusr)
 
-username = Entry(Details, textvariable=USERNAME, font=('arial', 15, 'bold'))
-username.grid(row=0, column=0)
+        self.username = Entry(
+            self,
+            bd=0,
+            bg="#FFFFFF",
+            highlightthickness=0,
+            font = ("18")
+        )
+        self.username.place(
+            x=140.0,
+            y=435.0,
+            width=449.0,
+            height=53.0
+        )
 
-b2 = Button(Details, text="Next", font=('arial', 11, 'bold'), width=10, height=2, command = user_login).grid(row=1, column=0)
+        self.canvas.create_text(
+            140.0,
+            388.0,
+            anchor="nw",
+            text="Username",
+            fill="#72E1F9",
+            font=("Kalam", 32 * -1)
+        )
 
-mainloop()
+
+
+    def open_register_window(self, event):
+        register = register_window(self)
+        register.show()
+        self.hide()
+
+    def checkusr(self, event):
+        if checkUser(self.username.get()):
+            self.open_selectimg_window()
+        else:
+            messagebox.showerror("Error", "User does not exist")
+            self.username.delete(0, 'end')
+
+
+
+    def open_selectimg_window(self):
+        selectimg = selectimg_window(self, self.username.get())
+        selectimg.show()
+        self.hide()
+    
+
+    def hide(self):
+        self.withdraw()
+
+    def show(self):
+        self.update()
+        self.deiconify()

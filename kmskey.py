@@ -15,16 +15,14 @@ def getEncryptkey(encrContext) :
     plaintext = base64.b64encode(response['Plaintext'])
     return ciphertext, plaintext
 
-def getDecryptkey(ciphertext) :
-    # The encrypted data key stored in your database
-    encrypted_key = base64.b64decode(ciphertext, encrContext)
-
-    # Call the Decrypt API to get the plaintext data key
+def getDecryptkey(ciphertext, encrContext) :
     response = kms.decrypt(
-        CiphertextBlob= encrypted_key,
+        CiphertextBlob= ciphertext,
         EncryptionContext= encrContext,
         KeyId = key
     )
 
     # The plaintext data key
     plaintext_key = response['Plaintext']
+    p_key = base64.b64encode(plaintext_key)
+    return p_key
