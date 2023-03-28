@@ -87,34 +87,15 @@ def saveImg(filename, uid):
     except Error as e:
         print("Error adding images on S3: ", e)
 
-def resaveImg(user, images):
+def removeImg(user):
     s3 = boto3.resource('s3')
-    try:
-        connection = mysql.connector.connect(host= config.host,
-                                             database= config.db_name,
-                                             user= config.user,
-                                             password= config.passwd)
-        cursor = connection.cursor()
-        mySql_insert_query = """SELECT id from user_data where username = %s ;"""
-        user = cursor.execute(mySql_insert_query, user)
-        connection.commit()
-
-    except Error as e:
-        print("Error while connecting to MySQL", e)
-
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-            print("MySQL connection is closed")
-
-    response = s3.delete_object(Bucket='visual-key-image-bucket', Key= user + '/')
-    if response['DeleteMarker'] == True:
-        saveImg(images, user)
+    response = s3.Object('visual-key-image-bucket', user + '/').delete()
+    if response:
+        print('Images removed')
     else:
-        print(response)
+        print('Error removing images')
 
-def resetpasswd(email, passdata = {}):
+def resetpasswd(id, passdata = {}):
     try:
         connection = mysql.connector.connect(host= config.host,
                                              database= config.db_name,
@@ -122,11 +103,11 @@ def resetpasswd(email, passdata = {}):
                                              password= config.passwd)
         cursor = connection.cursor()
 
-        mySql_insert_query = """UPDATE user_data SET `salt` = %s, `nonce` = %s, 
-                                `tag` = %s, `password` = %s `encryptkey` = %s WHERE (`email` = %s)"""
+        mySql_insert_query = """UPDATE notthepass SET `salt` = %s, `nonce` = %s, 
+                                `tag` = %s, `password` = %s, `encrkey` = %s WHERE `uid` = %s"""
 
         record = (passdata.get('salt'), passdata.get('nonce'), passdata.get('tag'), passdata.get('cipher_text'),
-                  passdata.get('key'), email)
+                  passdata.get('key'), id)
         cursor.execute(mySql_insert_query, record)
         connection.commit()
         print("Record updated successfully into vkdata")
@@ -212,8 +193,6 @@ def getPassword(username):
                                              user= config.user,
                                              password= config.passwd)
         cursor = connection.cursor()
-        mySql_insert_query = """SELECT password from user_data where username = %s ;"""
-
         getpassquery = ('''SELECT s.password FROM user_data f JOIN notthepass s ON f.id = s.uid 
                             WHERE f.username = %s;''')
 
@@ -262,7 +241,7 @@ def getUserfromMail(email):
                                                 user= config.user,
                                                 password= config.passwd)
             cursor = connection.cursor()
-            mySql_insert_query = """SELECT username from user_data where email = %s ;"""
+            mySql_insert_query = """SELECT id, username from user_data where email = %s ;"""
             cursor.execute(mySql_insert_query, (email,))
             record = cursor.fetchone()
             connection.commit()
@@ -277,3 +256,6 @@ def getUserfromMail(email):
             print("MySQL connection is closed")
 
     return record
+
+
+

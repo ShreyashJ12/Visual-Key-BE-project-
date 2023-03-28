@@ -84,21 +84,18 @@ class forgetpass_window(Toplevel):
 
     def check_OTP(self, event):
         OTP = rand_pass(8, self.email.get())
-        #otpwin=Tk()
-        #otpwin.geometry("700x300")
-
         print(OTP)
         self.entrOtp = askstring('OTP', 'Enter the OTP sent to your email')
         print(self.entrOtp)
         if self.entrOtp == OTP:
             showinfo('OTP', 'OTP verified successfully')
-            username = getUserfromMail(self.email.get())
-            self.open_createpass_window(username)
+            userdata = getUserfromMail(self.email.get())
+            self.open_createpass_window(userdata)
         else:
             showinfo('OTP', 'Incorrect OTP')
 
-    def open_createpass_window(self, username):
-        createpass = createpass_window(self, username, self.email.get())
+    def open_createpass_window(self, userdata):
+        createpass = createpass_window(self, userdata[0], userdata[1], forgetpass=True)
         createpass.show()
         self.hide()
     

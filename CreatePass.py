@@ -6,7 +6,7 @@ from feature_extraction import *
 import hashlib
 import aes256encrypt as aes256
 from RegisterSuccess import registersuccess_window
-from vkdatabaseconnect import addUser, saveImg, addPass
+from vkdatabaseconnect import addUser, saveImg, addPass, removeImg, resetpasswd
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path("./assets")
@@ -17,9 +17,10 @@ def relative_to_assets(path: str) -> Path:
 
 
 class createpass_window(Toplevel):
-    def __init__(self, parent, uid, username):
-        self.username = username
+    def __init__(self, parent, uid, username, forgetpass=False):
         self.uid = uid
+        self.username = username
+        self.forgetpass = forgetpass
         self.buttons = []
         self.num = IntVar()
         self.name = []
@@ -48,18 +49,24 @@ class createpass_window(Toplevel):
         RegisterImgbutton = self.canvas.create_image(1157, 760, image=self.RegisterImg)
         self.canvas.tag_bind(RegisterImgbutton, "<Button-1>", self.upload_file)
 
-        # self.upload_img = ImageTk.PhotoImage(Image.open(relative_to_assets("upload_images.png")))
-        # upload_imgbutton = self.canvas.create_image(1151, 340, image=self.upload_img)
-        # self.canvas.tag_bind(upload_imgbutton, "<Button-1>", self.upload_file)
-
-        self.canvas.create_text(
-            1055.0,
-            28.0,
-            anchor="nw",
-            text="Create Password",
-            fill="#FFFFFF",
-            font=("Kalam", 48 * -1)
-        )
+        if not self.forgetpass:
+            self.canvas.create_text(
+                1055.0,
+                28.0,
+                anchor="nw",
+                text="Create Password",
+                fill="#FFFFFF",
+                font=("Kalam", 48 * -1)
+            )
+        else:
+            self.canvas.create_text(
+                1055.0,
+                28.0,
+                anchor="nw",
+                text="Recreate Password",
+                fill="#FFFFFF",
+                font=("Kalam", 48 * -1)
+            )
 
         self.canvas.create_text(
             945.0,
@@ -94,25 +101,34 @@ class createpass_window(Toplevel):
         f_types = [('Jpg Files', '*.jpg'), ('Jpeg Files', '*.jpeg'),
                    ('PNG Files', '*.png')]  # type of files to select
         filename = filedialog.askopenfilename(multiple=True, filetypes=f_types)
-        imgs = saveImg(filename, self.uid)
-        print("Done")
+        if len(filename) != 25:
+            messagebox.showerror("Error", "Please select 25 Images")
+            return
+        elif len(filename) > 25:
+            messagebox.showerror("Error", "Too many images selected")
+            return
+        else:
+            if self.forgetpass:
+                removeImg(self.uid)
+            imgs = saveImg(filename, self.uid)
+            print("Done")
 
-        col = 1  # start from column 1
-        row = 5  # start from row 3
-        for f in imgs:
-            pil_image = Image.fromarray(f)
-            img = pil_image.resize((100, 100))  # new width & height
-            img = ImageTk.PhotoImage(img)
-            btn = Button(self.imgframe, command=lambda imgf=f: self.show_img(imgf))
-            btn.image = img
-            btn['image'] = img
-            btn.grid(row=row, column=col)
-            self.buttons.append(btn)
-            if col == 5:  # start new line after third column
-                row = row + 1  # start with next row
-                col = 1  # start with first column
-            else:  # within the same row
-                col = col + 1  # increase to next column
+            col = 1  # start from column 1
+            row = 5  # start from row 3
+            for f in imgs:
+                pil_image = Image.fromarray(f)
+                img = pil_image.resize((100, 100))  # new width & height
+                img = ImageTk.PhotoImage(img)
+                btn = Button(self.imgframe, command=lambda imgf=f: self.show_img(imgf))
+                btn.image = img
+                btn['image'] = img
+                btn.grid(row=row, column=col)
+                self.buttons.append(btn)
+                if col == 5:  # start new line after third column
+                    row = row + 1  # start with next row
+                    col = 1  # start with first column
+                else:  # within the same row
+                    col = col + 1  # increase to next column
 
     def generate_desci(self, filename):
         test = []
@@ -127,7 +143,10 @@ class createpass_window(Toplevel):
         print(enc_it)
         hashed_string = hashlib.sha256(enc_it.encode('utf-8')).hexdigest()
         passwd = aes256.encrypt(hashed_string, self.username)
-        addPass(self.uid, passwd)
+        if self.forgetpass:
+            resetpasswd(self.uid, passwd)
+        else:
+            addPass(self.uid, passwd)
         self.open_success_window()
 
     def open_success_window(self):
